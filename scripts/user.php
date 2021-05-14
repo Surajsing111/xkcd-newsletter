@@ -56,8 +56,24 @@ function check_token($email, $token)
         $stmt->execute();
         $stmt->store_result();
 
-        if ($stmt->num_rows == 1)
+        if ($stmt->num_rows == 1) {
+
+            // update the verified status
+            $update = "UPDATE user set verified = true WHERE email = ?";
+            if ($upt_stmt = $conn->prepare($update)) {
+
+                $upt_stmt->bind_param("s", $email);
+                $upt_stmt->execute();
+
+                // dupl key error for email [1062]
+                if ($upt_stmt->errno === 1062)
+                    return "User with same email exists";
+
+                $upt_stmt->close();
+            }
+
             return "Token validated";
+        }
 
         $stmt->close();
     } else {
@@ -70,9 +86,14 @@ function check_token($email, $token)
 
 function send_verification_mail($email, $token)
 {
-    $to = "atulpatare99@gmail.com";
-    $subject = "My subject";
-    $txt = "Hello world!";
+    $header = "From: noreply@example.com\r\n";
+    $header = "MIME-Version: 1.0\r\n";
+    $header = "Content-Type: text/html; charset=ISO-8859-1\r\n";
+    $header = "X-Priority: 1\r\n";
+    $to = 'atulpatare99@gmail.com';
+    $subject = "test message";
+    $message = "Another test";
 
-    mail($to, $subject, $txt);
+    $res = mail($to, $subject, $message, $header);
+    echo ($res);
 }

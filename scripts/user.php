@@ -21,15 +21,15 @@ function create_user($email)
 
         // dupl key error for email [1062]
         if ($stmt->errno === 1062)
-            return "User with same email exists";
+            return 409;
 
         $stmt->close();
     } else {
-        return "Server error occurred";
+        return 500;
     }
 
     $conn->close();
-    return "User added successfully";
+    return 200;
 }
 
 function gen_token()

@@ -9,7 +9,7 @@ function create_user($email)
 
     if (mysqli_connect_errno()) {
         printf("Connect failed: %s\n", mysqli_connect_error());
-        exit();
+        return 501;
     }
 
     $token = gen_token();
@@ -22,6 +22,11 @@ function create_user($email)
         // dupl key error for email [1062]
         if ($stmt->errno === 1062)
             return 409;
+
+        // everything went correct send mail
+        $res = send_verification_mail($email, $token);
+        if (!$res)
+            return 500;
 
         $stmt->close();
     } else {
@@ -46,12 +51,11 @@ function check_token($email, $token)
 
     if (mysqli_connect_errno()) {
         printf("Connect failed: %s\n", mysqli_connect_error());
-        exit();
+        return 500;
     }
 
     $query = "SELECT * FROM user WHERE email = ? AND token = ?";
     if ($stmt = $conn->prepare($query)) {
-
         $stmt->bind_param("ss", $email, $token);
         $stmt->execute();
         $stmt->store_result();
@@ -72,28 +76,48 @@ function check_token($email, $token)
                 $upt_stmt->close();
             }
 
-            return "Token validated";
+            return 200;
+        } else {
+            echo ("did not matched");
         }
 
         $stmt->close();
     } else {
-        return "Server error occurred";
+        return 501;
     }
 
     $conn->close();
-    return "Token is invalid";
+    return 501;
 }
 
 function send_verification_mail($email, $token)
 {
-    $header = "From: noreply@example.com\r\n";
-    $header = "MIME-Version: 1.0\r\n";
-    $header = "Content-Type: text/html; charset=ISO-8859-1\r\n";
-    $header = "X-Priority: 1\r\n";
-    $to = 'atulpatare99@gmail.com';
-    $subject = "test message";
-    $message = "Another test";
+    $header = "From: atulpatare99@gmail.com\r\n";
+    $header .= "MIME-Version: 1.0" . "\r\n";
+    $header .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+    $header .= "X-Priority: 1\r\n";
 
-    $res = mail($to, $subject, $message, $header);
-    echo ($res);
+    $to = $email;
+    $subject = "Xkcd Newletter Subscription code";
+    $message = sprintf('
+    <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+    </head>
+
+    <body>
+        <p>Here is your one time code for registering your mail on</p>
+        <h2>Xkcd Newsletter</h2> <br>
+        <h1><mark>%s</mark></h1>
+    </body>
+
+    </html>
+    ', $token);
+
+    return mail($to, $subject, $message, $header);
 }
